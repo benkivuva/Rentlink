@@ -1,0 +1,3 @@
+export type Property = { propertyId:string; town:string; unitName:string; type:string; rent:number; deposit:number; apartment:string; amenities:string; status:string; imageUrl:string; mapUrl:string; budgetTier:string; landlordId:string };
+export type Tenant = { tenantName:string; firstName:string; phoneNumber:string; assignedUnit:string; propertyId:string; rentDueDate:string; balance:number; leaseStatus:string; waterBill:number; totalBill:number; rentPaid:string; landlordId:string };
+export type Session = { phone:string; flow:string; step:string; context:Record<string, unknown>; updatedAt:string; landlordId:string };

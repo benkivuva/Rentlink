@@ -1,0 +1,13 @@
+import pino from 'pino';
+import {config} from './config';
+import {createApp} from './app';
+import {FlowEngine} from './flow-engine';
+import {AlertService} from './services/alerts.service';
+import {createSessionStore} from './services/session.service';
+import {SheetsService} from './services/sheets.service';
+import {runDailyReminders,startScheduler} from './services/scheduler';
+import {createWhatsAppProvider} from './whatsapp';
+const log=pino({level:config.LOG_LEVEL});
+const provider=createWhatsAppProvider();const sheets=new SheetsService();const alerts=new AlertService(provider,sheets);const engine=new FlowEngine(provider,sheets,createSessionStore(sheets),alerts);const app=createApp(engine,provider,()=>runDailyReminders(sheets,provider,alerts));
+app.listen(config.PORT,()=>log.info({port:config.PORT,provider:config.WHATSAPP_PROVIDER},'RentLink bot listening'));
+if(config.NODE_ENV!=='test')startScheduler(sheets,provider,alerts);
