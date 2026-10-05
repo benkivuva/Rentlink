@@ -17,6 +17,6 @@ function metaPayload(to:string,type:string,p:unknown){
     const v=p as {text:string;buttons:{id:string;title:string}[]};
     return {...base,type:'interactive',interactive:{type:'button',body:{text:v.text},action:{buttons:v.buttons.map(b=>({type:'reply',reply:{id:b.id,title:b.title.slice(0,20)}}))}}};
   }
-  const v=p as {text:string;sections:{title:string;rows:{id:string;title:string;description?:string}[]}[]};
-  return {...base,type:'interactive',interactive:{type:'list',body:{text:v.text},action:{button:'Choose',sections:v.sections}}};
+  const v=p as {text:string;sections:{title:string;rows:{id:string;title:string;description?:string}[]}[];buttonLabel:string};
+  return {...base,type:'interactive',interactive:{type:'list',body:{text:v.text},action:{button:v.buttonLabel,sections:v.sections}}};
 }

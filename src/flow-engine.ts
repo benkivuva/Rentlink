@@ -6,6 +6,8 @@ import {SessionStore} from './services/session.service';
 import {SheetsService} from './services/sheets.service';
 import {Tenant} from './types';
 import {digitsOnly,kenyanPhone} from './utils/phone';
+import {apartmentLabel,unitLabel,uniqueLabels} from './utils/whatsapp-ui';
+import {describeError} from './utils/logger';
 import {WhatsAppProvider} from './whatsapp/provider.interface';
 const log=pino({level:config.LOG_LEVEL});
 type Incoming={phone:string;text:string;kind?:'text'|'button'|'list'};
@@ -23,15 +25,38 @@ export class FlowEngine {
    if(s.flow==='payment'||s.flow==='issue'||s.flow==='notice')return this.tenantSubmission(phone,s,text);
    if(s.flow==='waitlist')return this.waitlist(phone,s,text);
    return this.main(phone);
-  } catch(err){logctx.error({err,flow:s.flow},'Message handling failed');await this.wa.sendText(phone,'Sorry, something went wrong. Please try again in a moment.');}
+  } catch(err){logctx.error({error:describeError(err),flow:s.flow},'Message handling failed');await this.wa.sendText(phone,'Sorry, something went wrong. Please try again in a moment.');}
  }
  private async main(phone:string){await this.wa.sendButtons(phone,messages.welcome,messages.customerMenu);await this.wa.sendText(phone,'Existing tenant? Reply *tenant* to open tenant services.');}
  private async browse(phone:string,s:{flow:string;step:string;context:Record<string,unknown>},text:string):Promise<void>{const c={...s.context};const ask=async(step:string,msg:string,buttons?:{id:string;title:string}[])=>{await this.save(phone,s.flow,step,c);return buttons?this.wa.sendButtons(phone,msg,buttons):this.wa.sendText(phone,msg);};
   if(s.flow==='quick'&&s.step==='search'){c.search=text;return ask('type','Choose unit type:',[{id:'1 Bed Apartment',title:'1 Bed'},{id:'2 Bed Apartment',title:'2 Bed'}]);}
   if(s.step==='town'||s.step==='search'){c[s.step]=text;return ask(s.step==='town'?'type':'type',s.step==='town'?'Choose unit type:':'Choose unit type:',[{id:'1 Bed Apartment',title:'1 Bed'},{id:'2 Bed Apartment',title:'2 Bed'}]);}
   if(s.step==='type'){c.type=text;return ask('budget','Choose your budget:',[{id:'Under 15k',title:'Under 15k'},{id:'15k - 25k',title:'15k - 25k'},{id:'25k+',title:'25k+'}]);}
-  if(s.step==='budget'){c.budgetTier=text;const rows=await this.sheets.getAvailableUnits({town:c.town as string|undefined,type:String(c.type??''),budgetTier:text,search:c.search as string|undefined});if(!rows.length){await this.save(phone,'waitlist','consent',{town:c.town??'',type:c.type??'',budget:text});return this.wa.sendButtons(phone,'No matching homes are available. Would you like us to notify you when one opens?', [{id:'yes',title:'Yes, notify me'},{id:'no',title:'No thanks'}]);}const a=[...new Set(rows.map(p=>p.apartment))];return ask('apartment','Available apartments:',a.slice(0,10).map(x=>({id:x,title:x.slice(0,20)})));}
-  if(s.step==='apartment'){c.apartment=text;const rows=await this.sheets.getAvailableUnits({town:c.town as string|undefined,type:String(c.type??''),budgetTier:String(c.budgetTier??''),apartment:text,search:c.search as string|undefined});return ask('unit','Choose a unit:',rows.slice(0,10).map(p=>({id:p.unitName,title:p.unitName.slice(0,20)})));}
+  if(s.step==='budget'){
+   c.budgetTier=text;
+   const rows=await this.sheets.getAvailableUnits({town:c.town as string|undefined,type:String(c.type??''),budgetTier:text,search:c.search as string|undefined});
+   if(!rows.length){await this.save(phone,'waitlist','consent',{town:c.town??'',type:c.type??'',budget:text});return this.wa.sendButtons(phone,'No matching homes are available. Would you like us to notify you when one opens?', [{id:'yes',title:'Yes, notify me'},{id:'no',title:'No thanks'}]);}
+   const apartments=[...new Set(rows.map(p=>p.apartment))];
+   const shown=apartments.slice(0,10);
+   const labels=uniqueLabels(shown,apartmentLabel,20);
+   await this.save(phone,s.flow,'apartment',c);
+   if(apartments.length<=3)return this.wa.sendButtons(phone,'Available apartments:',shown.map((id,index)=>({id,title:labels[index]!})));
+   await this.wa.sendList(phone,'Available apartments:',[{title:'Apartments',rows:shown.map((id,index)=>({id,title:labels[index]!}))}],'Choose Apartment');
+   if(apartments.length>10)await this.wa.sendText(phone,'Showing first 10 matches. Reply *agent* to see more.');
+   return;
+  }
+  if(s.step==='apartment'){
+   c.apartment=text;
+   const rows=await this.sheets.getAvailableUnits({town:c.town as string|undefined,type:String(c.type??''),budgetTier:String(c.budgetTier??''),apartment:text,search:c.search as string|undefined});
+   if(!rows.length)return this.wa.sendText(phone,'No units are currently available in this apartment.');
+   await this.save(phone,s.flow,'unit',c);
+   if(rows.length<=3){const labels=uniqueLabels(rows.map(p=>p.unitName),unitLabel,20);return this.wa.sendButtons(phone,'Choose a unit:',rows.map((unit,index)=>({id:unit.unitName,title:labels[index]!})));}
+   const shown=rows.slice(0,10);
+   const labels=uniqueLabels(shown.map(unit=>unit.unitName),unitLabel,20);
+   await this.wa.sendList(phone,'Choose a unit:',[{title:String(c.apartment).slice(0,24),rows:shown.map((unit,index)=>({id:unit.unitName,title:labels[index]!,description:`KES ${unit.rent.toLocaleString()} · ${unit.type}`.slice(0,72)}))}],'Choose Unit');
+   if(rows.length>10)await this.wa.sendText(phone,'Showing first 10 matches. Reply *agent* to see more.');
+   return;
+  }
   if(s.step==='unit'){const rows=await this.sheets.getAvailableUnits({town:c.town as string|undefined,type:String(c.type??''),budgetTier:String(c.budgetTier??''),apartment:String(c.apartment??''),search:c.search as string|undefined});const p=rows.find(x=>x.unitName===text);if(!p)return this.wa.sendText(phone,'Please choose one of the listed units.');c.unit=p.unitName;await this.save(phone,s.flow,'actions',c);await this.wa.sendText(phone,`*${p.unitName}* — ${p.apartment}\nRent: KES ${p.rent.toLocaleString()}\nDeposit: KES ${p.deposit.toLocaleString()}\nAmenities: ${p.amenities}${p.mapUrl?`\nMap: ${p.mapUrl}`:''}`);if(p.imageUrl)await this.wa.sendImage(phone,p.imageUrl);return this.wa.sendButtons(phone,'What would you like to do?', [{id:'viewing',title:'Book a Viewing'},{id:'back',title:'Back to List'},{id:'main',title:'Main Menu'}]);}
   if(s.step==='actions'){if(text==='viewing'){await this.save(phone,'viewing','name',{unit:c.unit});return this.wa.sendText(phone,'What is your name?');}if(text==='back'){return this.browse(phone,{flow:s.flow,step:'apartment',context:c},String(c.apartment??''));}return this.main(phone);}
   return this.askBrowse(phone,s.flow);
