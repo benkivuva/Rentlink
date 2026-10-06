@@ -21,6 +21,6 @@ export const headers = {
   Payments: ['Date','TenantName','PhoneNumber','Unit','Amount','MpesaMessage','MpesaCode','Status','ReceiptURL','Duplicate?'],
   Notices: ['Date','TenantName','PhoneNumber','Unit','MoveOutDate','Status'],
   Maintenance: ['Date','TenantName','Unit','Phone','Category','Description','PreferredTime','Status'],
-  Waitlist: ['Date','Phone','Town','Type','Budget'], Viewings: ['Date','ClientName','Phone','Unit','PreferredTime'],
+  Waitlist: ['Date','Phone','Town','Type','Budget','Name'], Viewings: ['Date','ClientName','Phone','Unit','PreferredTime'],
   Sessions: ['Phone','CurrentFlow','CurrentStep','Context','UpdatedAt','LandlordID'], SentAlerts: ['AlertKey','SentAt','LandlordID']
 } as const;

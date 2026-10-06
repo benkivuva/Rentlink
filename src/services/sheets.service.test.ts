@@ -34,10 +34,10 @@ describe('SheetsService append schemas',()=>{
   await service.addViewing({name:'Ada',phone:'+254712345678',unit:'Unit 1A',time:'Saturday'});
   assertAppend('Viewings!A:E',[expect.any(String),'Ada','+254712345678','Unit 1A','Saturday']);
  });
- it('appends Waitlist in the exact five-column schema order',async()=>{
+ it('appends Waitlist in the exact six-column schema order',async()=>{
   api.spreadsheets.values.append=append;
-  await service.addWaitlist({phone:'+254712345678',town:'Nairobi',type:'Bedsitter',budget:'15000'});
-  assertAppend('Waitlist!A:E',[expect.any(String),'+254712345678','Nairobi','Bedsitter','15000']);
+  await service.addWaitlist({phone:'+254712345678',town:'Nairobi',type:'Bedsitter',budget:'15000',name:'Ada'});
+  assertAppend('Waitlist!A:F',[expect.any(String),'+254712345678','Nairobi','Bedsitter','15000','Ada']);
  });
  it('appends SentAlerts in the exact three-column schema order',async()=>{
   api.spreadsheets.values.append=append;
