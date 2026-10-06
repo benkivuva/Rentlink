@@ -1,3 +1,22 @@
+export const BODY_LIMIT=1000;
+
+export function chunkMessage(text:string,limit=BODY_LIMIT):string[]{
+  if(!Number.isInteger(limit)||limit<1)throw new RangeError('Message chunk limit must be a positive integer');
+  if(!text)return [];
+  const chunks:string[]=[];
+  let offset=0;
+  while(offset<text.length){
+    let end=Math.min(offset+limit,text.length);
+    if(end<text.length){
+      const newline=text.lastIndexOf('\n',end-1);
+      if(newline>=offset)end=newline+1;
+    }
+    chunks.push(text.slice(offset,end));
+    offset=end;
+  }
+  return chunks;
+}
+
 export const unitLabel = (unitName:string):string => {
   const separator=' - ';
   const separatorIndex=unitName.lastIndexOf(separator);

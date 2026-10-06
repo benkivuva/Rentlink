@@ -6,7 +6,7 @@ import {SessionStore} from './services/session.service';
 import {SheetsService} from './services/sheets.service';
 import {Tenant} from './types';
 import {digitsOnly,normalizePhone} from './utils/phone';
-import {apartmentLabel,unitLabel,uniqueLabels} from './utils/whatsapp-ui';
+import {apartmentLabel,unitLabel,uniqueLabels,BODY_LIMIT,chunkMessage} from './utils/whatsapp-ui';
 import {describeError} from './utils/logger';
 import {WhatsAppProvider} from './whatsapp/provider.interface';
 import {resolveLandlord,Landlord} from './services/landlord.service';
@@ -31,7 +31,7 @@ export class FlowEngine {
   } catch(err){logctx.error({error:describeError(err),flow:s.flow},'Message handling failed');await this.wa.sendText(phone,'Sorry, something went wrong. Reply *menu* to return to the main menu.');}
  }
  private async landlordMenu(phone:string,landlord:Landlord){await this.wa.sendButtons(phone,`${landlord.name} dashboard:`,[{id:'landlord-viewings',title:"Today's viewings"},{id:'landlord-overdue',title:'Overdue tenants'},{id:'landlord-stats',title:'Stats'}]);return this.wa.sendButtons(phone,'More options:',[{id:'landlord-help',title:'Help'},{id:'landlord-client',title:'Client view'},{id:'landlord-menu',title:'Refresh'}]);}
- private async landlordResult(phone:string,text:string){return this.wa.sendButtons(phone,text,[{id:'landlord-menu',title:'Back to dashboard'}]);}
+ private async landlordResult(phone:string,text:string){const buttons=[{id:'landlord-menu',title:'Back to dashboard'}];if(text.length<=BODY_LIMIT)return this.wa.sendButtons(phone,text,buttons);for(const chunk of chunkMessage(text))await this.wa.sendText(phone,chunk);return this.wa.sendButtons(phone,'Choose an option:',buttons);}
  private isTodayDate(value:string){const today=localDate();if(value===today||value.startsWith(`${today}T`))return true;const parsed=Date.parse(value);return Number.isFinite(parsed)&&localDate(new Date(parsed))===today;}
  private async tryLandlordCommand(phone:string,landlord:Landlord,keyword:string):Promise<boolean>{
   if(['viewings','landlord-viewings'].includes(keyword)){const rows=(await this.sheets.getViewings()).filter(row=>this.isTodayDate(row.date));const body=rows.length?rows.map((row,index)=>`${index+1}. ${row.name} · ${row.phone} · ${row.unit} · ${row.preferredTime}`).join('\n'):'No viewings scheduled for today.';await this.landlordResult(phone,`*Today's viewings*\n${body}`);return true;}
