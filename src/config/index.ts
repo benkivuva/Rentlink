@@ -16,11 +16,11 @@ const schema = z.object({
 export const config = schema.parse(process.env);
 export const sheetNames = { properties: 'Properties', tenants: 'Tenants', payments: 'Payments', notices: 'Notices', maintenance: 'Maintenance', waitlist: 'Waitlist', viewings: 'Viewings', sessions: 'Sessions', sentAlerts: 'SentAlerts' } as const;
 export const headers = {
-  Properties: ['PropertyID','Town','UnitName','Type','Rent','Deposit','Apartment','Amenities','Status','ImageURL','MapURL','BudgetTier','LandlordID'],
-  Tenants: ['TenantName','FirstName','PhoneNumber','AssignedUnit','PropertyID','RentDueDate','Balance','LeaseStatus','WaterBill','TotalBill','RentPaid','LandlordID'],
-  Payments: ['Date','TenantName','PhoneNumber','Unit','MpesaMessage','Status','ReceiptSent','PropertyID','LandlordID'],
-  Notices: ['Date','TenantName','PhoneNumber','Unit','MoveOutDate','Status','PropertyID','LandlordID'],
-  Maintenance: ['Date','TenantName','Unit','Phone','Description','Status','PropertyID','LandlordID'],
-  Waitlist: ['Date','Phone','Town','Type','Budget','LandlordID'], Viewings: ['Date','ClientName','Phone','Unit','PreferredTime','LandlordID'],
+  Properties: ['PropertyID','Town','UnitName','Type','Rent','Deposit','Apartment','Amenities','Status','ImageURL','MapURL','BudgetTier'],
+  Tenants: ['TenantName','FirstName','PhoneNumber','AssignedUnit','PropertyID','RentDueDate','Balance','LeaseStatus','WaterBill','TotalBill','RentPaid'],
+  Payments: ['Date','TenantName','PhoneNumber','Unit','Amount','MpesaMessage','MpesaCode','Status','ReceiptURL','Duplicate?'],
+  Notices: ['Date','TenantName','PhoneNumber','Unit','MoveOutDate','Status'],
+  Maintenance: ['Date','TenantName','Unit','Phone','Category','Description','PreferredTime','Status'],
+  Waitlist: ['Date','Phone','Town','Type','Budget'], Viewings: ['Date','ClientName','Phone','Unit','PreferredTime'],
   Sessions: ['Phone','CurrentFlow','CurrentStep','Context','UpdatedAt','LandlordID'], SentAlerts: ['AlertKey','SentAt','LandlordID']
 } as const;
